@@ -29,6 +29,8 @@ object ZIOEffects {
   val tupledZIO = meaningOfLife.zip(anotherMOL)
   val combinedZIO = meaningOfLife.zipWith(anotherMOL)(_ * _)
 
+  // Starting ZIO Effect
+
   /**
    * Type aliases of ZIOs
    */
