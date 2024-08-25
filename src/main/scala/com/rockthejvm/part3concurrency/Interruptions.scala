@@ -73,6 +73,7 @@ object Interruptions extends ZIOAppDefault {
     1.second
   ).debugThread
 
+  // AMit
   /*
     2 - timeout v2
       - if zio is successful before timeout => a successful effect with Some(a)
