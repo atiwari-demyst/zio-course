@@ -13,6 +13,12 @@ object ZIOErrorHandling extends ZIOAppDefault {
   val failedWithThrowable = ZIO.fail(new RuntimeException("Boom!"))
   val failedWithDescription = failedWithThrowable.mapError(_.getMessage)
 
+  //  Key Point: ZIO.fail is used to create effects that represent failure,
+  //  ZIO.fail creates an effect that immediately fails with the specified error.
+  //  and mapError allows transforming the error type.
+
+  //  Since ZIO.succeed does not handle exceptions,
+  //  this is "bad" as the exception will be thrown immediately, not captured by ZIO.
   // attempt: run an effect that might throw an exception
   val badZIO = ZIO.succeed {
     println("Trying something")
@@ -20,6 +26,8 @@ object ZIOErrorHandling extends ZIOAppDefault {
     string.length
   } // this is bad
 
+  //  ZIO.attempt , which catches any exceptions thrown in the block of code
+  //  and wraps them in a failed ZIO effect
   // use attempt if you're ever unsure whether your code might throw
   val anAttempt: ZIO[Any, Throwable, Int] = ZIO.attempt {
     println("Trying something")
@@ -27,14 +35,22 @@ object ZIOErrorHandling extends ZIOAppDefault {
     string.length
   }
 
+  //  catchAll allows you to recover from any error by providing an alternative effect.
+  //  catchSome catches RuntimeExceptions and provides an alternative effect that returns a message
+  //.Other exceptions are passed through unhandled
   // effectfully catch errors
   val catchError = anAttempt.catchAll(e => ZIO.succeed(s"Returning a different value because $e"))
   val catchSelectiveErrors = anAttempt.catchSome {
     case e: RuntimeException => ZIO.succeed(s"Ignoring runtime exceptions: $e")
     case _ => ZIO.succeed("Ignoring everything else")
   }
+
+  //  orElse is used to provide a fallback effect in case the original effect fails.
   // chain effects
   val aBetterAttempt = anAttempt.orElse(ZIO.succeed(56))
+  //  fold handles success and failure by returning simple values.
+  //    foldZIO handles success and failure by returning ZIO effects
+  //  , enabling more complex handling
   // fold: handle both success and failure
   val handleBoth: ZIO[Any, Nothing, String] = anAttempt.fold(ex => s"Something bad happened: $ex", value => s"Length of the string was $value")
   // effectful fold: foldZIO
@@ -43,14 +59,25 @@ object ZIOErrorHandling extends ZIOAppDefault {
     value => ZIO.succeed(s"Length of the string was $value")
   )
 
+
+  // fold vs catchAll
+  //  catchAll: Only handles the failure case and provides an alternative ZIO effect
+  //  fold: Handles both success and failure cases allowing you to map them to a value.
+  //  catchAll: Returns a new ZIO effect , which could be either successful or failed depending on the alternative effect provided.
+  //  fold: Returns a value directly , not a Z
   /*
     Conversions between Option/Try/Either to ZIO
    */
-
+  //  If Try (42 / 0) is executed , it will produce a Failure because of a division by zero.
+  //  aTryToZIO will be a failed ZIO effect with the corresponding ArithmeticException.
   val aTryToZIO: ZIO[Any, Throwable, Int] = ZIO.fromTry(Try(42 / 0))  // can fail with Throwable
 
-  // either -> ZIO
+  // ZIO Either represents a value that can be one of two possible types: Left (usually representing failure)
+  //  or Right(usually representing success).
+  //  ZIO.fromEither converts an Either into a ZIO effect .If the Either is Left , the ZIO effect fails with the value inside Left
+  //  If the Either is Right , the ZIO effect succeeds with the value inside Right
   val anEither: Either[Int, String] = Right("Success!")
+
   val anEitherToZIO: ZIO[Any, Int, String] = ZIO.fromEither(anEither)
   // ZIO -> ZIO with Either as the value channel
   val eitherZIO = anAttempt.either
@@ -176,6 +203,15 @@ object ZIOErrorHandling extends ZIOAppDefault {
       case ioe: IOException => ioe
     }
 
+  //  Using refineOrDie: If the Throwable is an IOException , the error remains in the error channel.
+  //    If the Throwable is not an IOException(like in this example where it 's a RuntimeException)
+  //  , the effect fails as a defect , and the fiber dies .
+
+  //  If you used unrefine:  unrefine expects the error to be a defect
+  //  , not something already in the error channel.
+  //    It would be used to turn an unhandled exception(like a RuntimeException that caused a defect) back into a regular error
+  //  , not to narrow down an existing error type.
+
   // 3
   def left[R, E, A, B](zio: ZIO[R,E,Either[A,B]]): ZIO[R, Either[E,A], B] =
     zio.foldZIO(
@@ -185,6 +221,29 @@ object ZIOErrorHandling extends ZIOAppDefault {
         case Right(b) => ZIO.succeed(b)
       }
     )
+
+  // 4
+
+//  val databaseX = Map(
+//    "daniel" -> 123,
+//    "alice" -> 789
+//  )
+//  case class QueryErrorX(reason: String)
+//  case class UserProfileX(name: String, phone: Int)
+//
+//  def lookupProfileX(id: String)[A]: ZIO[Any, Either[QueryError,A], UserProfileX] = {
+//    if (id != id.toLowercase())
+//      ZIO.fail(Left(QueryErrorX))
+//    else
+//        id match {
+//          case !databaseX.contains(id) => ZIO.fail(Right(A))
+//          case _ => ZIO.succeed(databaseX.get(id).map(phone => UserProfile(id, phone)))
+//        }
+//  }
+
+
+
+
 
   // 4
   val database = Map(
