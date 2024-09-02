@@ -84,30 +84,34 @@ object ZIODependencies extends ZIOAppDefault {
   // best practice: write "factory" methods exposing layers in the companion objects of the services
   val runnableProgram = program_v2.provideLayer(userSubscriptionLayer)
 
+  //  provide is called directly on a ZIO effect, returning a new effect with all dependencies resolved.
   // magic
   val runnableProgram_v2 = program_v2.provide(
     UserSubscription.live,
     EmailService.live,
     UserDatabase.live,
-    ConnectionPool.live(10),
+    ConnectionPool.live(10)
     // ZIO will tell you if you're missing a layer
     // and if you have multiple layers of the same type
     // and tell you the dependency graph!
     // ZLayer.Debug.tree,
-    ZLayer.Debug.mermaid,
+//    ZLayer.Debug.mermaid,
   )
 
+  //  ZLayer.make is for composing layers that can then be provided to a program or effect.
   // magic v2
   val userSubscriptionLayer_v2: ZLayer[Any, Nothing, UserSubscription] = ZLayer.make[UserSubscription](
     UserSubscription.live,
     EmailService.live,
     UserDatabase.live,
-    ConnectionPool.live(10),
+    ConnectionPool.live(10)
   )
 
   // passthrough
   val dbWithPoolLayer: ZLayer[ConnectionPool, Nothing, ConnectionPool with UserDatabase] = UserDatabase.live.passthrough
   // service = take a dep and expose it as a value to further layers
+
+//  Here, it creates a layer that provides the UserDatabase service, which can be used by other layers or effects.
   val dbService = ZLayer.service[UserDatabase]
   // launch = creates a ZIO that uses the services and never finishes
   val subscriptionLaunch: ZIO[EmailService with UserDatabase, Nothing, Nothing] = UserSubscription.live.launch
