@@ -26,6 +26,7 @@ object Fibers extends ZIOAppDefault {
   val meaningOfLifeFiber: ZIO[Any, Nothing, Fiber[Throwable, Int]] = meaningOfLife.fork
 
   // join a fiber
+  // join returns the value enclosed in a ZIO effect
   def runOnAnotherThread[R,E,A](zio: ZIO[R,E,A]) = for {
     fib <- zio.fork
     result <- fib.join
@@ -59,6 +60,7 @@ object Fibers extends ZIOAppDefault {
   } yield tuple
 
   // orElse
+  // returns a fiber/ZIOeffect if invoked for 2 fibers/2 ZIOeffects respectively
   val chainedFibers = for {
     fiber1 <- ZIO.fail("not good!").debugThread.fork
     fiber2 <- ZIO.succeed("Rock the JVM!").debugThread.fork
