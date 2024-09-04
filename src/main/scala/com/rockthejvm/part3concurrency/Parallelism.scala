@@ -50,7 +50,14 @@ object Parallelism extends ZIOAppDefault {
   // foreachPar
   val printlnParallel = ZIO.foreachPar((1 to 10).toList)(i => ZIO.succeed(println(i)))
 
+//  collectAllPar: Use when you already have a collection of ZIO effects
+//    you want to run in parallel.
+
+//    foreachPar: Use when you have a collection of values and need to create ZIO effects
+//  for each value and run them in parallel.
+
   // reduceAllPar, mergeAllPar
+//  Similar to mergeAllPar, but the initial value is explicitly provided as a ZIO effect.
   val sumPar = ZIO.reduceAllPar(ZIO.succeed(0), effects)(_ + _)
   val sumPar_v2 = ZIO.mergeAllPar(effects)(0)(_ + _)
 
