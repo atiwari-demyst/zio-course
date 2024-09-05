@@ -4,7 +4,7 @@ import com.rockthejvm.utils.*
 import zio.*
 
 object Interruptions extends ZIOAppDefault {
-
+//  However , the presence of onInterrupt does not make zioWithTime "already interrupted" or change its normal execution path.The handler is only invoked if the effect is interrupted during execution .
   val zioWithTime =
     (
       ZIO.succeed("starting computation").debugThread *>
@@ -27,6 +27,8 @@ object Interruptions extends ZIOAppDefault {
     _ <- ZIO.succeed("Interruption successful").debugThread
     result <- fib.join
   } yield result
+
+//  This version is similar to interruption, but it uses interruptFork instead of interrupt. fib.interruptFork: interruptFork schedules the interruption of the child fiber fib, but it doesn't block the calling fiber until the child is interrupted. It returns immediately.
 
   /*
     Automatic interruption
@@ -51,6 +53,8 @@ object Interruptions extends ZIOAppDefault {
   val fastEffect = (ZIO.sleep(1.second) *> ZIO.succeed("fast").debugThread).onInterrupt(ZIO.succeed("[fast] interrupted").debugThread)
   val aRace = slowEffect.race(fastEffect)
   val testRace = aRace.fork *> ZIO.sleep(3.seconds)
+
+//  Without this ZIO .sleep(3.seconds) , the main fiber might finish execution too quickly , potentially terminating the program before the race completes .This delay is essential for giving the race fiber time to run and complete properly .
 
   /**
    * Exercise
